@@ -150,7 +150,6 @@ class BrainFPVFwPacker:
         file_header.priority = self.fw_priority
         file_header.flags = self._get_flags()
         file_header.number_of_sections = len(self._sections)
-        print(file_header.type)
         n_data_bytes = 0
         section_header_data = bytearray()
         all_section_data = bytearray()
