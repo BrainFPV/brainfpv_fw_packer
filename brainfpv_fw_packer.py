@@ -214,7 +214,7 @@ if __name__ == '__main__':
 
     options, args = parser.parse_args()
 
-    packer = BrainFPVFwPacker(options.fname_in, options.device, fw_version=options.fw_version,
+    packer = BrainFPVFwPacker(options.fname_in, options.device, fw_name=options.fw_name, fw_version=options.fw_version,
                               fw_sha1=options.fw_sha1, fw_prio=options.fw_prio, fw_type=options.fw_type,
                               fw_boot_address=options.fw_boot_address, compress=options.compress)
     print(packer)
