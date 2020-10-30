@@ -86,6 +86,7 @@ class BrainFPVFwPacker:
 
     def __repr__(self):
         lines = ['device: %s' % self.device,
+                 'fw_name: %s' % self.fw_name,
                  'fw_version: %s' % self.fw_version,
                  'fw_sha1: %s' % self.fw_sha1,
                  'fw_priority: %s' % self.fw_priority,
