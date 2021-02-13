@@ -13,7 +13,8 @@ import pycrc.algorithms
 class BrainFPVFwPacker:
     FILE_MAGIC = 0xCACA6F6E
     FILE_VERSION = 0x00000001
-    BRAINFPV_DEVICE_IDS = {'radix2': 0x00010001}
+    BRAINFPV_DEVICE_IDS = {'radix2':   0x00010001,
+                           'radix2hd': 0x00010002}
 
     class FileHeader(ctypes.Structure):
         _pack_ = 1
