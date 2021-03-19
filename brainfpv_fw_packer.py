@@ -53,6 +53,10 @@ class BrainFPVFwPacker:
         if fw_boot_address is not None:
             if fw_boot_address.startswith('0x'):
                 self.fw_boot_address = int(fw_boot_address[2:], 16)
+            elif op.exists(fw_boot_address):
+                # address is in a file
+                with open(fw_boot_address, 'r') as fid:
+                    self.fw_boot_address = int(fid.read(), 16)
             else:
                 raise RuntimeError('Entry point needs to be hex address')
         else:
