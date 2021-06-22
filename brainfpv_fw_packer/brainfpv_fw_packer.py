@@ -198,7 +198,7 @@ class BrainFPVFwPacker:
         if fid is None:
             fid = open(fname_out, 'wb')
             close_file = True
-        else: 
+        else:
             close_file = False
 
         fid.write(bytearray(file_header))
