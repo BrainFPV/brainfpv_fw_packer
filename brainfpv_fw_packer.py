@@ -39,13 +39,14 @@ class BrainFPVFwPacker:
 
     def __init__(self, fname_in, device, fw_version=None, fw_sha1=None,
                  fw_prio=None, fw_type=None, fw_boot_address=None, fw_name=None,
-                 compress=False):
+                 compress=False, no_header=False):
         self.fw_version = '' if fw_version is None else fw_version
         self.fw_sha1 = '' if fw_sha1 is None else fw_sha1
         self.fw_priority = 10 if fw_prio is None else int(fw_prio)
         self.fw_type = 1 if fw_type is None else int(fw_type)
         self.fw_name = 'NONE' if fw_name is None else fw_name
         self.compress = compress
+        self.no_header = no_header
         self._sections = []
         self._data_transform_steps = []
         self._n_padding_bytes = 0
@@ -98,6 +99,7 @@ class BrainFPVFwPacker:
                  'fw_type: %s' % self.fw_type,
                  'fw_boot_address: 0x%08X' % self.fw_boot_address,
                  'Compressed: %s' % self.compress,
+                 'Use header: %s' % (not self.no_header),
                  'Sections:']
         for sec in self._sections:
             lines.append('0x%08X len: %d' % (sec['start'], len(sec['data'])))
@@ -120,7 +122,9 @@ class BrainFPVFwPacker:
     def _get_flags(self):
         flags = 0
         if self.compress:
-            flags = 0x01
+            flags |= 0x01
+        if self.no_header:
+            flags |= 0x02
         return flags
 
     def _check_data_sections(self):
@@ -213,6 +217,8 @@ if __name__ == '__main__':
                       help='Firmware boot address')
     parser.add_option('-z', '--zip', action='store_true', default=False,
                       dest='compress', help='Compress data using zlib')
+    parser.add_option('--noheader', action='store_true', default=False,
+                      dest='noheader', help='Do not use header embedded in firmware')
     parser.add_option('-o', '--out', dest='fname_out',
                       help='Output file', metavar='FILE')
 
@@ -220,6 +226,7 @@ if __name__ == '__main__':
 
     packer = BrainFPVFwPacker(options.fname_in, options.device, fw_name=options.fw_name, fw_version=options.fw_version,
                               fw_sha1=options.fw_sha1, fw_prio=options.fw_prio, fw_type=options.fw_type,
-                              fw_boot_address=options.fw_boot_address, compress=options.compress)
+                              fw_boot_address=options.fw_boot_address, compress=options.compress,
+                              no_header=options.noheader)
     print(packer)
     packer.save(options.fname_out)
