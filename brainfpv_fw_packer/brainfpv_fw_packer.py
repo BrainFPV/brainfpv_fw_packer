@@ -16,6 +16,8 @@ class BrainFPVFwPacker:
     BRAINFPV_DEVICE_IDS = {'radix2':   0x00010001,
                            'radix2hd': 0x00010002}
 
+    FW_TYPES = {'firmware': 1, 'bootloader': 2}
+
     class FileHeader(ctypes.Structure):
         _pack_ = 1
         _fields_ = [('magic', ctypes.c_uint32),
@@ -39,11 +41,11 @@ class BrainFPVFwPacker:
 
     def __init__(self, fname_in, device, fw_version=None, fw_sha1=None,
                  fw_prio=None, fw_type=None, fw_boot_address=None, fw_name=None,
-                 compress=False, no_header=False):
+                 compress=False, no_header=False, hex_data=None):
         self.fw_version = '' if fw_version is None else fw_version
         self.fw_sha1 = '' if fw_sha1 is None else fw_sha1
         self.fw_priority = 10 if fw_prio is None else int(fw_prio)
-        self.fw_type = 1 if fw_type is None else int(fw_type)
+        self.fw_type = 1 if fw_type is None else self.FW_TYPES[fw_type]
         self.fw_name = 'NONE' if fw_name is None else fw_name
         self.compress = compress
         self.no_header = no_header
@@ -76,9 +78,11 @@ class BrainFPVFwPacker:
             self._data_transform_steps.append(self._compress_data)
 
         if fname_in is None:
-            return
-
-        if fname_in.endswith('.hex'):
+            if hex_data is not None:
+                self._parse_hex(hex_data)
+            else:
+                return
+        elif fname_in.endswith('.hex'):
             self._parse_hex(fname_in)
         else:
             raise RuntimeError('File type not supported')
@@ -145,7 +149,7 @@ class BrainFPVFwPacker:
         print('In: %d Out: %d Compression ratio: 1:%0.1f' % (n_in, n_out, n_in / n_out))
         return data_out
 
-    def save(self, fname_out):
+    def save(self, fname_out, fid=None):
         """ Generate output file """
         file_header = self.FileHeader()
         file_header.magic = self.FILE_MAGIC
@@ -191,10 +195,17 @@ class BrainFPVFwPacker:
             all_section_data = tf_step(all_section_data)
 
         # Write output
-        with open(fname_out, 'wb') as fid:
-            fid.write(bytearray(file_header))
-            fid.write(section_header_data)
-            fid.write(all_section_data)
+        if fid is None:
+            fid = open(fname_out, 'wb')
+            close_file = True
+        else: 
+            close_file = False
+
+        fid.write(bytearray(file_header))
+        fid.write(section_header_data)
+        fid.write(all_section_data)
+        if close_file:
+            fid.close()
 
 
 if __name__ == '__main__':
