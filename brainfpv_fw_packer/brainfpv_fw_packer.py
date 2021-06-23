@@ -41,7 +41,7 @@ class BrainFPVFwPacker:
 
     def __init__(self, fname_in, device, fw_version=None, fw_sha1=None,
                  fw_prio=None, fw_type=None, fw_boot_address=None, fw_name=None,
-                 compress=False, no_header=False, hex_data=None):
+                 compress=False, no_header=False, hex_data=None, verbose=1):
         self.fw_version = '' if fw_version is None else fw_version
         self.fw_sha1 = '' if fw_sha1 is None else fw_sha1
         self.fw_priority = 10 if fw_prio is None else int(fw_prio)
@@ -52,6 +52,7 @@ class BrainFPVFwPacker:
         self._sections = []
         self._data_transform_steps = []
         self._n_padding_bytes = 0
+        self._verbose = verbose
 
         if fw_boot_address is not None:
             if fw_boot_address.startswith('0x'):
@@ -146,7 +147,8 @@ class BrainFPVFwPacker:
         n_in = len(data_in)
         data_out = zlib.compress(data_in, level=6)
         n_out = len(data_out)
-        print('In: %d Out: %d Compression ratio: 1:%0.1f' % (n_in, n_out, n_in / n_out))
+        if self._verbose > 0:
+            print('In: %d Out: %d Compression ratio: 1:%0.1f' % (n_in, n_out, n_in / n_out))
         return data_out
 
     def save(self, fname_out, fid=None):
@@ -188,7 +190,8 @@ class BrainFPVFwPacker:
         # Calculate CRC32
         file_header.crc = self._calc_crc32(all_data[16:])
 
-        print('Total header size: %d' % (len(bytearray(file_header)) + len(section_header_data)))
+        if self._verbose > 0:
+            print('Total header size: %d' % (len(bytearray(file_header)) + len(section_header_data)))
 
         # Apply data transforms to section data:
         for tf_step in self._data_transform_steps:
