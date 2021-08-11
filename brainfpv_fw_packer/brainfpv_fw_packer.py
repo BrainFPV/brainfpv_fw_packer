@@ -2,6 +2,7 @@ import os
 import os.path as op
 import sys
 import ctypes
+import json
 
 import zlib
 from optparse import OptionParser
@@ -10,11 +11,70 @@ from optparse import OptionParser
 from intelhex import IntelHex
 import pycrc.algorithms
 
+
+class DeviceInfo:
+    def __init__(self, device_name):
+        device_name = device_name.lower()
+        dev_fname = op.join(op.dirname(__file__), 'devices', device_name + '.json')
+        if not op.exists(dev_fname):
+            raise RuntimeError('no device configuration for %s' % device_name)
+
+        def num_to_int(num):
+            if isinstance(num, int):
+                return num
+            elif isinstance(num, float):
+                return int(num)
+            elif isinstance(num, str):
+                if num.startswith('0x'):
+                    num = int(num[2:], 16)
+                    return num
+                elif num.endswith('K'):
+                    num = int(num[:-1]) * 1024
+                    return num
+                else:
+                    return int(num)
+            else:
+                raise RuntimeError('Data type not supported')
+
+        dev_info_dict = json.load(open(dev_fname, 'rt'))
+        self.device_name = device_name
+        self.device_id = num_to_int(dev_info_dict['device_id'])
+        self._sections = list()
+        for sect in dev_info_dict['sections']:
+            address = num_to_int(sect['address'])
+            size = num_to_int(sect['size'])
+            self._sections.append({'address': address, 'size': size})
+
+    def get_section(self, address):
+        for s in self._sections:
+            if address >= s['address'] and address < s['address'] + s['size']:
+                this_sect = {'address': address, 'size': s['size'] - (address - s['address'])}
+                return this_sect
+        raise RuntimeError('No section with address 0x%X' % address)
+
+    def get_sections(self, address, size):
+        """Get one or more sections for the data"""
+        sections_found = list()
+        current_address = address
+        bytes_remaining = size
+        while bytes_remaining > 0:
+            sect = self.get_section(current_address)
+            used_size = min(bytes_remaining, sect['size'])
+            sections_found.append(dict(address=sect['address'], size=used_size))
+            bytes_remaining -= used_size
+            current_address += used_size
+        return sections_found
+
+    def __repr__(self):
+        r_str = 'Device: %s ID: 0x%X\nSections:\n' % (self.device_name, self.device_id)
+        sect_str = '\n'.join(['addr: 0x%X size: %d kB' % (s['address'], (s['size'] / 1024)) for s in self._sections])
+        return r_str + sect_str
+
+
+
 class BrainFPVFwPacker:
     FILE_MAGIC = 0xCACA6F6E
     FILE_VERSION = 0x00000001
-    BRAINFPV_DEVICE_IDS = {'radix2':   0x00010001,
-                           'radix2hd': 0x00010002}
 
     FW_TYPES = {'firmware': 1, 'bootloader': 2}
 
@@ -69,11 +129,8 @@ class BrainFPVFwPacker:
         if device is None:
             raise RuntimeError('device is cannot be None')
 
-        device = device.lower()
-        if device not in self.BRAINFPV_DEVICE_IDS:
-            raise RuntimeError('No ID for device %s' % device)
-        self.device = device
-        self.device_id = self.BRAINFPV_DEVICE_IDS[device]
+        self.dev_info = DeviceInfo(device)
+        print(self.dev_info)
 
         if self.compress:
             self._data_transform_steps.append(self._compress_data)
@@ -92,11 +149,16 @@ class BrainFPVFwPacker:
         hexf = IntelHex()
         hexf.loadhex(fname)
         for (start, stop) in hexf.segments():
-            this_section = dict(start=start, data=hexf[start:stop].tobinarray(), stype=self.fw_type)
-            self._sections.append(this_section)
+            address = start
+            size = stop - start
+            sections = self.dev_info.get_sections(address, size)
+            for sect in sections:
+                data=hexf[sect['address'] : sect['address'] + sect['size']].tobinarray()
+                this_section = dict(start=sect['address'], data=data, stype=self.fw_type)
+                self._sections.append(this_section)
 
     def __repr__(self):
-        lines = ['device: %s' % self.device,
+        lines = ['device: %s' % self.dev_info.device_name,
                  'fw_name: %s' % self.fw_name,
                  'fw_version: %s' % self.fw_version,
                  'fw_sha1: %s' % self.fw_sha1,
@@ -156,7 +218,7 @@ class BrainFPVFwPacker:
         file_header = self.FileHeader()
         file_header.magic = self.FILE_MAGIC
         file_header.file_version = self.FILE_VERSION
-        file_header.device_id = self.device_id
+        file_header.device_id = self.dev_info.device_id
         self._fill_field_from_str(file_header.name, self.fw_name)
         self._fill_field_from_str(file_header.version, self.fw_version)
         self._fill_field_from_str(file_header.version_sha1, self.fw_sha1)
