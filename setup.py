@@ -8,7 +8,4 @@ setup(name='BrainFPV Firmware Packer',
       author='Marin Luessi',
       author_email='martin@brainfpv.com',
       packages=['brainfpv_fw_packer'],
-      include_package_data=True,
      ) 
-
-
