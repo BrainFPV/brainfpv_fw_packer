@@ -9,16 +9,24 @@ import json
 import zlib
 from optparse import OptionParser
 
-#sys.path.append(os.path.join(sys.path[0], 'intelhex'))
 from intelhex import IntelHex
 import pycrc.algorithms
-
 
 class DeviceInfo:
     def __init__(self, device_name):
         device_name = device_name.lower()
-        dev_fname = op.join(op.dirname(__file__), 'devices', device_name + '.json')
-        if not op.exists(dev_fname):
+        # Look for the device definition file in a number of places
+        dev_dirs = [op.join(op.dirname(__file__), 'devices'),
+                    op.join(op.dirname(__file__), '..', '..', 'brainfpv_fw_packer', 'devices')]
+
+        dev_found = False
+        for dd in dev_dirs:
+            dev_fname = op.join(dd, device_name + '.json')
+            if op.exists(dev_fname):
+                dev_found = True
+                break
+
+        if not dev_found:
             raise RuntimeError('no device configuration for %s' % device_name)
 
         def num_to_int(num):
