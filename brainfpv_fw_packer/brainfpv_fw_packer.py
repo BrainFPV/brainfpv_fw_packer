@@ -10,6 +10,8 @@ import zlib
 from optparse import OptionParser
 
 from intelhex import IntelHex
+from elftools.elf.elffile import ELFFile
+
 import pycrc.algorithms
 
 class DeviceInfo:
@@ -152,6 +154,8 @@ class BrainFPVFwPacker:
                 return
         elif fname_in.endswith('.hex'):
             self._parse_hex(fname_in)
+        elif fname_in.endswith('.elf'):
+            self._parse_elf(fname_in)
         else:
             raise RuntimeError('File type not supported')
 
@@ -166,6 +170,54 @@ class BrainFPVFwPacker:
                 data=hexf[sect['address'] : sect['address'] + sect['size']].tobinarray()
                 this_section = dict(start=sect['address'], data=data, stype=self.fw_type)
                 self._sections.append(this_section)
+
+    def _parse_elf(self, fname):
+        with open(fname, 'rb') as fid:
+            elffile = ELFFile(fid)
+
+            elf_data = []
+
+            for seg in elffile.iter_segments():
+                if seg['p_type'] != 'PT_LOAD':
+                    continue
+                sec_data = bytearray()
+                for sec in elffile.iter_sections():
+                    if not seg.section_in_segment(sec):
+                        continue
+                    if sec['sh_type'] not in ('SHT_PROGBITS', 'SHT_INIT_ARRAY', 'SHT_ARM_EXIDX'):
+                        continue
+                    sec_data.extend(sec.data())
+
+                size = len(sec_data)
+                if size == 0:
+                    continue
+                if len(sec_data) != seg['p_filesz']:
+                    raise RuntimeError('Size mismatch. Seg: %s' % seg)
+
+                elf_data.append(dict(address=seg['p_paddr'], data=sec_data))
+
+            # Sort by address, then merge sections together if possible
+            elf_data.sort(key=lambda d : d['address'])
+
+            elf_data_comb = []
+            for ii,d in enumerate(elf_data):
+                if ii > 0:
+                    prev = elf_data_comb[-1]
+                    if d['address'] == prev['address'] + len(prev['data']):
+                        prev['data'].extend(d['data'])
+                        continue
+                elf_data_comb.append(d)
+
+
+            # Create device sections
+            for d in elf_data_comb:
+                sections = self.dev_info.get_sections(d['address'], len(d['data']))
+                pos = 0
+                for sect in sections:
+                    sd = d['data'][pos:pos + sect['size']]
+                    this_section = dict(start=sect['address'], data=sd, stype=self.fw_type)
+                    self._sections.append(this_section)
+                    pos += sect['size']
 
     def __repr__(self):
         lines = ['device: %s' % self.dev_info.device_name,
@@ -286,7 +338,7 @@ class BrainFPVFwPacker:
 if __name__ == '__main__':
     parser = OptionParser()
     parser.add_option('-i', '--in', dest='fname_in',
-                      help='Input file', metavar='FILE')
+                      help='Input file (hex or elf)', metavar='FILE')
     parser.add_option('-d', '--dev', dest='device',
                       help='Device')    
     parser.add_option('-n', '--name', dest='fw_name',
