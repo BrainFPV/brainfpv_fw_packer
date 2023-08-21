@@ -19,13 +19,9 @@ class DeviceInfo:
         device_name = device_name.lower()
         # Look for the device definition file in a number of places
         dev_dirs = [op.join(op.dirname(__file__), 'devices'),
-                    op.join(op.dirname(__file__), '..', '..', 'brainfpv_fw_packer', 'devices')]
+                    op.join(op.dirname(__file__), '..', '..', 'brainfpv_fw_packer', 'devices'),
+                    op.join(op.dirname(__file__), '..', 'Lib', 'site-packages', 'brainfpv_fw_packer', 'devices')]
 
-        try:
-            import brainfpv_fw_packer
-            dev_dirs.append(op.join(op.dirname(brainfpv_fw_packer.__file__), 'devices'))
-        except ImportError:
-            pass
 
         dev_found = False
         for dd in dev_dirs:
