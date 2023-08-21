@@ -21,6 +21,12 @@ class DeviceInfo:
         dev_dirs = [op.join(op.dirname(__file__), 'devices'),
                     op.join(op.dirname(__file__), '..', '..', 'brainfpv_fw_packer', 'devices')]
 
+        try:
+            import brainfpv_fw_packer
+            dev_dirs.append(op.join(op.dirname(brainfpv_fw_packer.__file__), 'devices'))
+        except ImportError:
+            pass
+
         dev_found = False
         for dd in dev_dirs:
             dev_fname = op.join(dd, device_name + '.json')
