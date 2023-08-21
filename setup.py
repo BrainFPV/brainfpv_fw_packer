@@ -11,5 +11,5 @@ setup(name='BrainFPV Firmware Packer',
       package_dir={'brainfpv_fw_packer':'brainfpv_fw_packer'},
       package_data={'brainfpv_fw_packer': ['devices/*.json']},
       scripts=['brainfpv_fw_packer/brainfpv_fw_packer.py'],
-      install_requires=['intelhex', 'elftools', 'pycrc'],
+      install_requires=['intelhex', 'pyelftools', 'pycrc'],
      ) 
