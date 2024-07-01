@@ -24,6 +24,8 @@ class DeviceInfo:
         for spd in site.getsitepackages():
             dev_dirs.append(op.join(spd, 'brainfpv_fw_packer', 'devices'))
 
+        dev_dirs.append(op.join(site.getusersitepackages(), 'brainfpv_fw_packer', 'devices'))
+
         dev_found = False
         for dd in dev_dirs:
             dev_fname = op.join(dd, device_name + '.json')
