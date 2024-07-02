@@ -34,7 +34,8 @@ class DeviceInfo:
                 break
 
         if not dev_found:
-            raise RuntimeError('no device configuration for %s' % device_name)
+            raise RuntimeError('No device configuration for %s. Directories searched: %s'
+                               % (device_name, dev_dirs))
 
         def num_to_int(num):
             if isinstance(num, int):
